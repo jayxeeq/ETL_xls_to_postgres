@@ -6,7 +6,10 @@ from configparser import ConfigParser
 
 
 def create_table(cursor, table_name, headers):
-    create_table_query = f"CREATE TABLE IF NOT EXISTS central_{table_name} ({', '.join(headers)})"
+    columns = [f"{header} TEXT" for header in headers]
+    drop_table_query = f"DROP TABLE IF EXISTS {table_name}"
+    create_table_query = f"CREATE TABLE IF NOT EXISTS {table_name} ({', '.join(columns)})"
+    cursor.execute(drop_table_query)
     cursor.execute(create_table_query)
 
 def clean_string(string):
@@ -18,6 +21,7 @@ def clean_string(string):
 
 def transfer_data(file_path, db_host, db_port, db_name, db_user, db_password):
     print(f"file: {file_path}")
+
     try:
         if not os.path.isfile(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
@@ -25,14 +29,20 @@ def transfer_data(file_path, db_host, db_port, db_name, db_user, db_password):
         # Extract table name from file name
         print(f"file found: {file_path}")
 
-        file_name = file_path.split('/')[-1].split('.')[0]
-        table_name = clean_string(file_name)
-        table_name = f"central_{file_name}"
+        # Extract directory and file name from file path
+        directory, file_name = os.path.split(file_path)
+        table_name = clean_string(file_name.split('.')[0])
+
+
+        #file_name = file_path.split('/')[-1].split('.')[0]
+        #table_name = clean_string(file_name)
+        table_name = f"central_{table_name}"
 
         
 
         # Read XLS file
-        df = pd.read_excel(file_path)
+        df = pd.read_excel(file_path, dtype=str)
+        df = df.fillna('')
         print(file_path)
 
         # Clean column names
@@ -43,8 +53,7 @@ def transfer_data(file_path, db_host, db_port, db_name, db_user, db_password):
             host=db_host,
             port=db_port,
             database=db_name,
-            user=db_user,
-            password=db_password
+            user=db_user
         )
         cursor = connection.cursor()
 
